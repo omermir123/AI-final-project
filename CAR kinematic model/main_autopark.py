@@ -1,5 +1,6 @@
 import math
 import random
+from genetic import GeneticAlg
 
 import cv2
 import numpy as np
@@ -55,8 +56,8 @@ if __name__ == '__main__':
     env = Environment(obs)
     my_car = Car_Dynamics(start[0], start[1], 0, np.deg2rad(args.psi_start), length=4, dt=0.2)
     MPC_HORIZON = 5
-    # controller = MPC_Controller()
-    controller = Linear_MPC_Controller()
+    controller = MPC_Controller()
+    # controller = Linear_MPC_Controller()
 
     res = env.render(my_car.x, my_car.y, my_car.psi, 0)
     cv2.imshow('environment', res)
@@ -83,22 +84,34 @@ if __name__ == '__main__':
     # env.draw_path(interpolated_park_path)
 
     # final_path = np.vstack([interpolated_path, interpolated_park_path, ensure_path2])
-    deltas = [random.randrange(90, 271, 1) for i in range(900)]
-    dist = [1 for i in range(900)]
-    final_path = [start]
-    for i in range(len(deltas)):
-        xx = final_path[-1][0] + (dist[i] * math.cos(deltas[i]))
-        yy = final_path[-1][1] + (dist[i] * math.sin(deltas[i]))
-        final_path.append(np.array([xx,yy]))
-    final_path = np.array(final_path)
 
+    margin = 5
+    # sacale obstacles from env margin to pathplanning margin
+    obstacles = obs + np.array([margin, margin])
+    obstacles = obstacles[(obstacles[:, 0] >= 0) & (obstacles[:, 1] >= 0)]
+
+    obs1 = np.concatenate([np.array([[0, i] for i in range(100 + margin)]),
+                               np.array([[100 + 2 * margin, i] for i in range(100 + 2 * margin)]),
+                               np.array([[i, 0] for i in range(100 + margin)]),
+                               np.array([[i, 100 + 2 * margin] for i in range(100 + 2 * margin)]),
+                               obstacles])
+
+    ox = [int(item) for item in obs1[:, 0]]
+    oy = [int(item) for item in obs1[:, 1]]
+    grid_size = 1
+    robot_radius = 4
+
+    gen = GeneticAlg(start[0], start[1], ox, oy, grid_size, robot_radius)
+    pop = gen.population
 
     #############################################################################################
 
     ################################## control ##################################################
     print('driving to destination ...')
+    # for final_path in pop:
+    final_path = max(pop, key=lambda x:len(x))
     for i,point in enumerate(final_path):
-        
+
             acc, delta = controller.optimize(my_car, final_path[i:i+MPC_HORIZON])
             # acc, delta = accelerates[i], deltas[i]
             my_car.update_state(my_car.move(acc,  delta))
