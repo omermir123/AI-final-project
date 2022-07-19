@@ -87,13 +87,14 @@ if __name__ == '__main__':
 
     margin = 5
     # sacale obstacles from env margin to pathplanning margin
-    obstacles = obs + np.array([margin, margin])
-    obstacles = obstacles[(obstacles[:, 0] >= 0) & (obstacles[:, 1] >= 0)]
 
-    obs1 = np.concatenate([np.array([[0, i] for i in range(100 + margin)]),
-                               np.array([[100 + 2 * margin, i] for i in range(100 + 2 * margin)]),
-                               np.array([[i, 0] for i in range(100 + margin)]),
-                               np.array([[i, 100 + 2 * margin] for i in range(100 + 2 * margin)]),
+    # obstacles = obs + np.array([margin, margin])
+    obstacles = obs[(obs[:, 0] >= 0) & (obs[:, 1] >= 0)]
+
+    obs1 = np.concatenate([np.array([[0, i] for i in range(105)]),
+                            np.array([[105, i] for i in range(105)]),
+                               np.array([[i, 0] for i in range(105)]),
+                               np.array([[i, 105] for i in range(105)]),
                                obstacles])
 
     ox = [int(item) for item in obs1[:, 0]]

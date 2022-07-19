@@ -71,7 +71,7 @@ class GeneticAlg:
                 y = self.calc_grid_position(iy, self.min_y)
                 for iox, ioy in zip(ox, oy):
                     d = math.hypot(iox - x, ioy - y)
-                    if d < self.rr:
+                    if d < self.rr - 2:
                         self.obstacle_map[ix][iy] = True
                         break
 
