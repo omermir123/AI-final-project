@@ -4,7 +4,7 @@ This repository contains a python implementation of an automatic parallel parkin
 We implemented both genetic algorithm and q-learning algorithm to compare their performances in this task with different situations. 
 
 ## Envroinment
-for the parking lot GUI we used an open source environment we found on GITHUB:
+we used an open source virtual environment we found on GITHUB:
 https://github.com/Pandas-Team/Automatic-Parking
 
 ## genetic algorithm
@@ -14,8 +14,8 @@ need to add
 need to add
 
 ## About Us 
-This is the final project we submitted as part of the Introduction to Artificial Intelligence course.
-Fell free to contact us:
+This is the final project we submitted as part of the Introduction to Artificial Intelligence course at the Hebrew University of Jerusalem.
+Feel free to contact us:
 
 - Omer Mirzaev: omer.mirzaev@mail.huji.ac.il
 - Edith Elkanovich: edith.elkanovich@mail.huji.ac.il
