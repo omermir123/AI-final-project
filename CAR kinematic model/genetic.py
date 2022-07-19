@@ -39,6 +39,7 @@ class GeneticAlg:
         #             break
         #         final_path.append(np.array([xx, yy]))
         #     self.population.append(np.array(final_path))
+
         for route in range(50):
             directions = [self.motion[random.randrange(0, 7, 1)] for _ in range(900)]
             final_path = [np.array([self.calc_xy_index(self.start_x, self.min_x),
