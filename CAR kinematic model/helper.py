@@ -150,6 +150,8 @@ class AStarPlanner:
         d = w * math.hypot(n1.x - n2.x, n1.y - n2.y)
         return d
 
+
+
     def calc_grid_position(self, index, min_position):
         """
         calc grid position
