@@ -66,7 +66,7 @@ class Environment:
         # adding wheel
         rotated_wheel_center = self.rotate_car(self.wheel_positions, angle=psi)
         for i,wheel in enumerate(rotated_wheel_center):
-            
+
             if i <2:
                 rotated_wheel = self.rotate_car(self.wheel_struct, angle=delta+psi)
             else:
@@ -114,6 +114,6 @@ class Parking1:
         return self.end, np.array(self.obs).reshape(-1,2)
 
     def make_car(self):
-        car_obstacle_x, car_obstacle_y = np.meshgrid(np.arange(-2,2), np.arange(-4,4))
+        car_obstacle_x, car_obstacle_y = np.meshgrid(np.arange(-1,1), np.arange(-4,4))
         car_obstacle = np.dstack([car_obstacle_x, car_obstacle_y]).reshape(-1,2)
         return car_obstacle

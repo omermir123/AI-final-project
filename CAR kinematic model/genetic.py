@@ -1,6 +1,7 @@
 import random
 import math
 import numpy as np
+import control
 
 
 class GeneticAlg:
@@ -41,29 +42,8 @@ class GeneticAlg:
         return np.array(final_path)
 
     def create_init_population(self):
-        # # TODO - how many routes? how many steps?
-        # for route in range(50):
-        #     deltas = [random.randrange(-15, 15, 1) for i in range(900)]
-        #     dist = [1 for i in range(900)]
-        #     final_path = [np.array([self.start_x, self.start_y])]
-        #     for i in range(len(deltas)):
-        #         xx = final_path[-1][0] + (dist[i] * math.cos(np.deg2rad(deltas[i])))
-        #         yy = final_path[-1][1] + (dist[i] * math.sin(np.deg2rad(deltas[i])))
-        #         if not self.verify_step(xx, yy):
-        #             break
-        #         final_path.append(np.array([xx, yy]))
-        #     self.population.append(np.array(final_path))
-
-        for route in range(400):
+        for route in range(40):
             directions = [self.motion[random.randrange(0, 7, 1)] for _ in range(900)]
-            # final_path = [np.array([self.calc_xy_index(self.start_x, self.min_x),
-            #                         self.calc_xy_index(self.start_y, self.min_y)])]
-            # for direction in directions:
-            #     xx = final_path[-1][0] + direction[0]
-            #     yy = final_path[-1][1] + direction[1]
-            #     if not self.verify_step(xx, yy):
-            #         break
-            #     final_path.append(np.array([xx, yy]))
             self.population.append(self.direction_to_path(directions))
             self.directions_.append(directions[:len((self.population[-1]))])
 
@@ -135,10 +115,6 @@ class GeneticAlg:
         return new_path
 
     def get_split_indexes(self, path1, path2):
-        # left = np.empty(len(path1), dtype=object)
-        # left[:] = [tuple(point) for point in path1]
-        # right = np.empty(len(path2), dtype=object)
-        # right[:] = [tuple(point) for point in path2]
         left, right = self.flatten_path(path1), self.flatten_path(path2)
         same_points = np.array([x for x in np.intersect1d(left, right, return_indices=True)])[1:]
         split_index = random.randint(0, len(same_points[0]) - 1)
@@ -159,7 +135,7 @@ class GeneticAlg:
         return new_gen
 
     def compute_mutation(self, paths):
-        p = random.uniform(0, 1)
+        p = 0.3
         for j, path in enumerate(paths):
             mutate_path = [path[0]]
             path_deg = []
@@ -169,7 +145,8 @@ class GeneticAlg:
                 path_deg.append([angle, dist])
             if random.uniform(0, 1) > p:
                 rand_index = random.randint(0, len(path_deg) - 1)
-                rand_deg = np.deg2rad(random.randint(0, 360))
+                # rand_deg = np.deg2rad(random.randint(0, 360))
+                rand_deg = np.deg2rad(random.choice([0, 90, 270, 360]))
                 path_deg[rand_index][0] = rand_deg
             for i in range(len(path_deg)):
                 new_x = mutate_path[-1][0] + int(path_deg[i][1] * np.cos(path_deg[i][0]))
@@ -180,38 +157,44 @@ class GeneticAlg:
             paths[j] = np.array(mutate_path)
         return paths
 
-    def fitness(self, path):
+    def fitness(self, path, car, gen_num):
+        og_path = path
         path = self.flatten_path(path)
         self.goal_x, self.goal_y = 75, 32
-        points_in_parking = [(self.goal_x, self.goal_y + i) for i in range(-10, 11)]
+        points_in_parking = [(self.goal_x, self.goal_y + i) for i in range(-15, 16)]
         num_of_appearances = 0
         for p in points_in_parking:
             num_of_appearances += np.count_nonzero(path == p)
         car_location = np.array(path[-1])
-        # norm = np.linalg.norm(car_location - np.array([self.goal_x, self.goal_y]))
-        # park_up_right = np.array([self.goal_x + 5, self.goal_y + 5])
-        # park_up_left = np.array([self.goal_x - 5, self.goal_y + 5])
-        # park_down_right = np.array([self.goal_x + 5, self.goal_y - 5])
-        # park_down_left = np.array([self.goal_x - 5, self.goal_y - 5])
-        # corner_dist_in_parking = np.linalg.norm(car_location - park_up_right) + np.linalg.norm(
-        #     car_location - park_up_left)
-        # + np.linalg.norm(car_location - park_down_right) + np.linalg.norm(car_location - park_down_left)
-        #
-        # # return norm + corner_dist_in_parking + 0.5 * len(path)
-        # return norm + 10 * (0 if np.rad2deg(np.arctan2(path[-1][1] - path[-2][1], path[-1][0] - path[-2][0])) == 90 else 1) + 10 * (0 if np.rad2deg(np.arctan2(path[-1][1] - path[-2][1], path[-1][0] - path[-2][0])) == 270 else 1)
-
         norm = np.linalg.norm(car_location - np.array([self.goal_x, self.goal_y]))
         path_counter = np.unique(self.flatten_path(path), return_counts=True)[1]
-        n_counter = np.count_nonzero(path_counter > 1)
+        n_counter = np.count_nonzero(path_counter > 2)
+        norm_w, n_counter_w, num_of_appearances_w = 8, 9, 8
+        if gen_num > 99:
+            car_psi = self.degree_of_parking(og_path, car)
+            # _, degree = controller.optimize(car, og_path[-5:])
+            # degree = degree % 360
+            delta_degree = min(abs(car_psi - 90), abs(car_psi - 270))
+        else :
+            delta_degree = 0
 
-        return  5 * norm + n_counter
+        return 5*norm + n_counter + 2*(20 - num_of_appearances) + delta_degree * 10
 
-    def run_genetics(self):
+    def move_car_in_path(self, path, car):
+        controller = control.MPC_Controller()
+        for i,point in enumerate(path):
+            acc, delta = controller.optimize(car, path[i:i+5])
+            # acc, delta = accelerates[i], deltas[i]
+            car.update_state(car.move(acc,  delta))
+
+    def degree_of_parking(self, path, car):
+        self.move_car_in_path(path,car)
+        return car.psi
+
+    def run_genetics(self, car, gen_num):
         price_of_paths = []
         for path in self.population:
-            price_of_paths.append(self.fitness(path))
+            price_of_paths.append(self.fitness(path, car, gen_num))
         good_indexes = np.argsort(np.array(price_of_paths))
         children_pop = self.cross_over(self.population[good_indexes[:20]])
         self.population = np.array(self.compute_mutation(children_pop))
-        # self.population = np.array(children_pop)
-        # self.directions_ = np.array(children_dir)

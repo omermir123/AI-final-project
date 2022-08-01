@@ -104,9 +104,10 @@ if __name__ == '__main__':
 
     gen = GeneticAlg(start[0], start[1], ox, oy, grid_size, robot_radius, end[0], end[1])
     pop1 = gen.population
-    for i in range(300):
+    for i in range(105):
         print(f"Generation number {i}")
-        gen.run_genetics()
+        gen.run_genetics(my_car, i)
+        my_car = Car_Dynamics(start[0], start[1], 0, np.deg2rad(args.psi_start), length=4, dt=0.2)
     pop2 = gen.population
 
     #############################################################################################
@@ -114,14 +115,14 @@ if __name__ == '__main__':
     ################################## control ##################################################
     price_of_paths = []
     for path in gen.population:
-        price_of_paths.append(gen.fitness(path))
+        price_of_paths.append(gen.fitness(path, my_car, 105))
     good_indexes = np.argsort(np.array(price_of_paths))
-    final_path = gen.population[good_indexes[0]]
-    for final_path1 in pop2:
+    final_paths = gen.population[good_indexes[:30]]
+    for final_path1 in final_paths:
         print('driving to destination ...')
+        print(f"the score is {gen.fitness(final_path1, my_car, 105)}")
         # final_path = max(pop, key=lambda x:len(x))
         for i,point in enumerate(final_path1):
-            final_deg = gen.fitness(final_path1)
             acc, delta = controller.optimize(my_car, final_path1[i:i+MPC_HORIZON])
             # acc, delta = accelerates[i], deltas[i]
             my_car.update_state(my_car.move(acc,  delta))
@@ -131,7 +132,10 @@ if __name__ == '__main__':
             key = cv2.waitKey(1)
             if key == ord('s'):
                 cv2.imwrite('res.png', res*255)
-
+        # acc, delta = controller.optimize(my_car, final_path1[-5:])
+        degree = my_car.psi
+        print(f"the angle is {np.rad2deg(degree)}")
+        print(f"the angle in rad is {degree}")
         # zeroing car steer
         res = env.render(my_car.x, my_car.y, my_car.psi, 0)
         # logger.save_data()
