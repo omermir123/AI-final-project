@@ -170,7 +170,7 @@ class GeneticAlg:
         path_counter = np.unique(self.flatten_path(path), return_counts=True)[1]
         n_counter = np.count_nonzero(path_counter > 2)
         norm_w, n_counter_w, num_of_appearances_w = 8, 9, 8
-        if gen_num > 99:
+        if 100 <= gen_num <=105:
             car_psi = self.degree_of_parking(og_path, car)
             # _, degree = controller.optimize(car, og_path[-5:])
             # degree = degree % 360
@@ -178,7 +178,7 @@ class GeneticAlg:
         else :
             delta_degree = 0
 
-        return 5*norm + n_counter + 2*(20 - num_of_appearances) + delta_degree * 10
+        return 10*norm + n_counter + 2*(20 - num_of_appearances) + delta_degree * 5
 
     def move_car_in_path(self, path, car):
         controller = control.MPC_Controller()
@@ -189,12 +189,13 @@ class GeneticAlg:
 
     def degree_of_parking(self, path, car):
         self.move_car_in_path(path,car)
-        return car.psi
+        return car.psi % 360
 
-    def run_genetics(self, car, gen_num):
+    def run_genetics(self, gen_num):
         price_of_paths = []
         for path in self.population:
-            price_of_paths.append(self.fitness(path, car, gen_num))
+            my_car = control.Car_Dynamics(self.start_x, self.start_y, 0, np.deg2rad(270), length=4, dt=0.2)
+            price_of_paths.append(self.fitness(path, my_car, gen_num))
         good_indexes = np.argsort(np.array(price_of_paths))
         children_pop = self.cross_over(self.population[good_indexes[:20]])
         self.population = np.array(self.compute_mutation(children_pop))
