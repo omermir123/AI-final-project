@@ -9,7 +9,7 @@ import argparse
 
 from environment import Environment, Parking1
 from helper import PathPlanning, ParkPathPlanning, interpolate_path
-from control import Car_Dynamics, MPC_Controller, Linear_MPC_Controller
+from control import Car_Dynamics, PurePersuit, Linear_MPC_Controller
 from utils import angle_of_line, make_square, DataLogger
 
 if __name__ == '__main__':
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     env = Environment(obs)
     my_car = Car_Dynamics(start[0], start[1], 0, np.deg2rad(args.psi_start), length=4, dt=0.2)
     MPC_HORIZON = 5
-    controller = MPC_Controller()
+    controller = PurePersuit()
     # controller = Linear_MPC_Controller()
 
     res = env.render(my_car.x, my_car.y, my_car.psi, 0)
@@ -85,11 +85,11 @@ if __name__ == '__main__':
 
     # final_path = np.vstack([interpolated_path, interpolated_park_path, ensure_path2])
 
-    margin = 10
+    margin = 5
     # sacale obstacles from env margin to pathplanning margin
 
-    # obstacles = obs + np.array([margin, margin])
-    obstacles = obs[(obs[:, 0] >= 0) & (obs[:, 1] >= 0)]
+    obstacles = obs + np.array([margin, margin])
+    # obstacles = obs[(obs[:, 0] >= 0) & (obs[:, 1] >= 0)]
 
     obs1 = np.concatenate([np.array([[0, i] for i in range(105)]),
                             np.array([[105, i] for i in range(105)]),
@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
     gen = GeneticAlg(start[0], start[1], ox, oy, grid_size, robot_radius, end[0], end[1])
     pop1 = gen.population
-    for i in range(200):
+    for i in range(400):
         print(f"Generation number {i}")
         gen.run_genetics(i)
         my_car = Car_Dynamics(start[0], start[1], 0, np.deg2rad(args.psi_start), length=4, dt=0.2)
@@ -113,31 +113,40 @@ if __name__ == '__main__':
     #############################################################################################
 
     ################################## control ##################################################
+    my_car = Car_Dynamics(start[0], start[1], 0, np.deg2rad(args.psi_start), length=4, dt=0.2)
     price_of_paths = []
     for path in gen.population:
         price_of_paths.append(gen.fitness(path, my_car, 100))
+        my_car = Car_Dynamics(start[0], start[1], 0, np.deg2rad(args.psi_start), length=4, dt=0.2)
     good_indexes = np.argsort(np.array(price_of_paths))
     final_paths = gen.population[good_indexes[:30]]
-    for final_path1 in final_paths:
+    for k, final_path1 in enumerate(final_paths):
         print('driving to destination ...')
-        print(f"the score is {price_of_paths[good_indexes[0]]}")
+        print(f"the score is {price_of_paths[good_indexes[k]]}")
         # final_path = max(pop, key=lambda x:len(x))
         my_car = Car_Dynamics(start[0], start[1], 0, np.deg2rad(args.psi_start), length=4, dt=0.2)
-        for i,point in enumerate(final_path1):
-            acc, delta = controller.optimize(my_car, final_path1[i:i+MPC_HORIZON])
+        acc, delta, paths_x, paths_y, paths_psi = controller.calc_path(final_path1, np.deg2rad(args.psi_start), 4)
+        for i in range(len(acc)):
+
+        # for i,point in enumerate(final_path1):
+            # acc, delta = controller.optimize(my_car, final_path1[i:i+MPC_HORIZON])
             # acc, delta = accelerates[i], deltas[i]
-            my_car.update_state(my_car.move(acc,  delta))
-            res = env.render(my_car.x, my_car.y, my_car.psi, delta)
-            logger.log(point, my_car, acc, delta)
+            # my_car.update_state(my_car.move(acc,  delta))
+
+            res = env.render(paths_x[i], paths_y[i], paths_psi[i], delta[i])
+            # logger.log(point, my_car, acc[i], delta[i])
             cv2.imshow('environment', res)
             key = cv2.waitKey(1)
             if key == ord('s'):
                 cv2.imwrite('res.png', res*255)
         # acc, delta = controller.optimize(my_car, final_path1[-5:])
         degree = my_car.psi
-        print(f"the angle is {np.rad2deg(degree) % 360}")
-        print(f"the angle in rad is {degree}")
+        print(f"the angle is {np.rad2deg(paths_psi[-1]) % 360}")
+        print(f"the angle in rad is {paths_psi[-1]}")
+        print(f"render : the final point is ({paths_x[-1]}, {paths_y[-1]})")
+        print(f"real : the final point is ({final_path1[-1]}, {final_path1[-1]})")
         # zeroing car steer
+        cv2.waitKey(100000)
         res = env.render(my_car.x, my_car.y, my_car.psi, 0)
         # logger.save_data()
         cv2.imshow('environment', res)

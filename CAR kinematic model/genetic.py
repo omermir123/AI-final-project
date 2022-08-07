@@ -38,12 +38,15 @@ class GeneticAlg:
             yy = final_path[-1][1] + direction[1]
             if not self.verify_step(xx, yy):
                 break
+            if xx == self.goal_x and yy == self.goal_y:
+                final_path.append(np.array([xx, yy]))
+                break
             final_path.append(np.array([xx, yy]))
         return np.array(final_path)
 
     def create_init_population(self):
         for route in range(40):
-            directions = [self.motion[random.randrange(0, 7, 1)] for _ in range(900)]
+            directions = [self.motion[random.randrange(0, 7, 1)] for _ in range(200)]
             self.population.append(self.direction_to_path(directions))
             self.directions_.append(directions[:len((self.population[-1]))])
 
@@ -153,43 +156,59 @@ class GeneticAlg:
                 new_y = mutate_path[-1][1] + int(path_deg[i][1] * np.sin(path_deg[i][0]))
                 if not self.verify_step(new_x, new_y):
                     break
+                if new_x == self.goal_x and new_y == self.goal_y:
+                    mutate_path.append(np.array([new_x, new_y]))
+                    break
                 mutate_path.append(np.array([new_x, new_y]))
             paths[j] = np.array(mutate_path)
         return paths
 
     def fitness(self, path, car, gen_num):
-        og_path = path
-        path = self.flatten_path(path)
+        controller = control.PurePersuit()
+        # my_car = control.Car_Dynamics(self.start_x, self.start_y, 0, np.deg2rad(270), length=4, dt=0.2)
+        acc, delta, paths_x, paths_y, paths_psi = controller.calc_path(path, np.deg2rad(270), 4)
         self.goal_x, self.goal_y = 75, 32
-        points_in_parking = [(self.goal_x, self.goal_y + i) for i in range(-15, 16)]
-        num_of_appearances = 0
-        for p in points_in_parking:
-            num_of_appearances += np.count_nonzero(path == p)
-        car_location = np.array(path[-1])
+        car_location = np.array([paths_x[-1], paths_y[-1]])
         norm = np.linalg.norm(car_location - np.array([self.goal_x, self.goal_y]))
         path_counter = np.unique(self.flatten_path(path), return_counts=True)[1]
-        n_counter = np.count_nonzero(path_counter > 2)
-        norm_w, n_counter_w, num_of_appearances_w = 8, 9, 8
-        if 100 <= gen_num <=105:
-            car_psi = self.degree_of_parking(og_path, car)
-            # _, degree = controller.optimize(car, og_path[-5:])
-            # degree = degree % 360
-            delta_degree = min(abs(car_psi - 90), abs(car_psi - 270))
-        else :
-            delta_degree = 0
+        n_counter = np.count_nonzero(path_counter > 1)
+        if len(paths_psi) == 0:
+            delta_degree = 100
+        else:
+            park_deg = np.rad2deg(paths_psi[-1]) % 360
+            delta_degree = min(abs(park_deg - 90), abs(park_deg - 270))
+        # return 10*norm + n_counter + 2*(20 - num_of_appearances) + delta_degree * 5
+        # return 20*norm + 3*n_counter + 2*(20 - num_of_appearances)
+        return norm*10 + delta_degree
 
-        return 10*norm + n_counter + 2*(20 - num_of_appearances) + delta_degree * 5
+        # og_path = path
+        # path = self.flatten_path(path)
+        # self.goal_x, self.goal_y = 75, 32
+        # points_in_parking = [(self.goal_x, self.goal_y + i) for i in range(-15, 16)]
+        # num_of_appearances = 0
+        # for p in points_in_parking:
+        #     num_of_appearances += np.count_nonzero(path == p)
+        # car_location = np.array(path[-1])
+        # norm = np.linalg.norm(car_location - np.array([self.goal_x, self.goal_y]))
+        # path_counter = np.unique(self.flatten_path(path), return_counts=True)[1]
+        # n_counter = np.count_nonzero(path_counter > 1)
+        # norm_w, n_counter_w, num_of_appearances_w = 8, 9, 8
+        # # if 100 <= gen_num <=105:
+        # car_psi = self.degree_of_parking(og_path)
+        # # _, degree = controller.optimize(car, og_path[-5:])
+        # # degree = degree % 360
+        # delta_degree = min(abs(car_psi - 90), abs(car_psi - 270))
+        # else :
+        # delta_degree = 0
 
-    def move_car_in_path(self, path, car):
-        controller = control.MPC_Controller()
-        for i,point in enumerate(path):
-            acc, delta = controller.optimize(car, path[i:i+5])
-            # acc, delta = accelerates[i], deltas[i]
-            car.update_state(car.move(acc,  delta))
 
-    def degree_of_parking(self, path, car):
-        self.move_car_in_path(path,car)
-        return car.psi % 360
+    # def degree_of_parking(self, path):
+    #     controller = control.PurePersuit()
+    #     my_car = control.Car_Dynamics(self.start_x, self.start_y, 0, np.deg2rad(270), length=4, dt=0.2)
+    #     acc, delta, paths_x, paths_y, paths_psi = controller.calc_path(path, np.deg2rad(270), 4)
+    #     park_deg = paths_psi[-1] % 360
+    #     return paths_psi[-1]
+
 
     def run_genetics(self, gen_num):
         price_of_paths = []

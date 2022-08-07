@@ -114,6 +114,6 @@ class Parking1:
         return self.end, np.array(self.obs).reshape(-1,2)
 
     def make_car(self):
-        car_obstacle_x, car_obstacle_y = np.meshgrid(np.arange(-1,1), np.arange(-4,4))
+        car_obstacle_x, car_obstacle_y = np.meshgrid(np.arange(-2,2), np.arange(-5,5))
         car_obstacle = np.dstack([car_obstacle_x, car_obstacle_y]).reshape(-1,2)
         return car_obstacle
