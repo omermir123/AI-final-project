@@ -30,6 +30,14 @@ LARGE_Q_VALUES = 'large_train_100000.txt'
 
 #############################################################################################
 
+
+def quality(car, goal):
+    norm = np.linalg.norm(np.array([car.x, car.y]) - np.array([goal[0], goal[1]]))
+    angle = np.deg2rad(car.psi) % 360
+    return 30 * norm + 5 * min(abs(angle - 90), abs(angle - 270))
+
+
+
 if __name__ == '__main__':
 
     ################### define process configurations and parse arguments ###################
@@ -105,8 +113,8 @@ if __name__ == '__main__':
     ########################## init agent ###############################################
     agent = None
     if alg == Q_LEARNING:
-        # agent = QLearingAgent(start[0], start[1], end[0], end[1], ox, oy, grid_size, robot_radius, 1, 0.6, 0.1)
-        agent = QLearingAgent(start[0], start[1], end[0], end[1], ox, oy, grid_size, robot_radius, 1, 0.6, 0.3)
+        agent = QLearingAgent(start[0], start[1], end[0], end[1], ox, oy, grid_size, robot_radius, 1, 0.6, 0.1)
+        # agent = QLearingAgent(start[0], start[1], end[0], end[1], ox, oy, grid_size, robot_radius, 1, 0.6, 0.3)
         controller = MPC_Controller()
     else:
         agent = GeneticAlg(start[0], start[1], ox, oy, grid_size, robot_radius, end[0], end[1])
@@ -165,6 +173,8 @@ if __name__ == '__main__':
         key = cv2.waitKey(1)
         if key == ord('s'):
             cv2.imwrite('res.png', res*255)
+    fitness = quality(my_car, end)
+    print(f"quality percentage is {fitness}")
 
     # zeroing car steer
     res = env.render(my_car.x, my_car.y, my_car.psi, 0)
@@ -174,4 +184,8 @@ if __name__ == '__main__':
     #############################################################################################
 
     cv2.destroyAllWindows()
+
+
+
+
 
