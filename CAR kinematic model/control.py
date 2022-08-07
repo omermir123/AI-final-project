@@ -22,9 +22,9 @@ class Car_Dynamics:
         psi_dot = self.v * np.tan(delta) / self.L
         return np.array([[x_dot, y_dot, v_dot, psi_dot]]).T
 
-    def update_state(self, accelerate, delta):
+    def update_state_pure(self, accelerate, delta):
         # # self.u_k = command
-        # # self.z_k = state
+        # # self.z_k = stor i in range(400):ate
         # self.state = self.state + self.dt * state_dot
         # self.x = self.state[0, 0]
         # self.y = self.state[1, 0]
@@ -34,6 +34,13 @@ class Car_Dynamics:
         self.y = self.y + self.v * math.sin(self.psi) * self.dt
         self.psi = self.psi + self.v / self.L * math.tan(delta) * self.dt
         self.v = self.v + accelerate * self.dt
+
+    def update_state(self, state_dot):
+        self.state = self.state + self.dt * state_dot
+        self.x = self.state[0, 0]
+        self.y = self.state[1, 0]
+        self.v = self.state[2, 0]
+        self.psi = self.state[3, 0]
 
 
 class PurePersuit:
@@ -115,7 +122,7 @@ class PurePersuit:
             acc.append(self.PIDControl(target_speed, car.v))
             temp, target_ind = self.pure_pursuit_control(car, cx, cy, target_ind)
             delta.append(temp)
-            car.update_state(acc[-1], delta[-1])
+            car.update_state_pure(acc[-1], delta[-1])
             x.append(car.x)
             y.append(car.y)
             psi.append(car.psi)

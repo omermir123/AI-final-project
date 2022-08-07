@@ -10,7 +10,7 @@ import argparse
 from q_learning import *
 from environment import Environment, Parking1
 from helper import PathPlanning, ParkPathPlanning, interpolate_path
-from control import Car_Dynamics, MPC_Controller, Linear_MPC_Controller
+from control import Car_Dynamics, MPC_Controller, PurePersuit, Linear_MPC_Controller
 from utils import angle_of_line, make_square, DataLogger
 
 ########################## constant ################################################
@@ -79,7 +79,6 @@ if __name__ == '__main__':
     env = Environment(obs)
     my_car = Car_Dynamics(start[0], start[1], 0, np.deg2rad(args.psi_start), length=4, dt=0.2)
     MPC_HORIZON = 5
-    controller = MPC_Controller()
 
     res = env.render(my_car.x, my_car.y, my_car.psi, 0)
     cv2.imshow('environment', res)
@@ -108,8 +107,10 @@ if __name__ == '__main__':
     if alg == Q_LEARNING:
         # agent = QLearingAgent(start[0], start[1], end[0], end[1], ox, oy, grid_size, robot_radius, 1, 0.6, 0.1)
         agent = QLearingAgent(start[0], start[1], end[0], end[1], ox, oy, grid_size, robot_radius, 1, 0.6, 0.3)
+        controller = MPC_Controller()
     else:
         agent = GeneticAlg(start[0], start[1], ox, oy, grid_size, robot_radius, end[0], end[1])
+        controller = PurePersuit()
     #############################################################################################
 
     ########################## training or loading data ###############################################
@@ -119,6 +120,7 @@ if __name__ == '__main__':
             start_time = time.time()
             agent.run_genetics(training_episodes)
             print(f"The time it took to train the {alg} agent with {training_episodes} generations is {time.time() - start_time} seconds")
+            np.savetxt(file_name, agent.population)
         else:
             print(f'starting to train the {alg} agent')
             start_time = time.time()
@@ -133,27 +135,36 @@ if __name__ == '__main__':
             agent.q_table = q_table_2d.reshape(q_table_2d.shape[0], q_table_2d.shape[1] // agent.q_table.shape[2],
                                               agent.q_table.shape[2])
         else:
-            pass
+            population = np.loadtxt(file_name)
+            agent.population = population
+            gen_acc, deltas, paths_x, paths_y, paths_psi = controller.calc_path(np.array(agent.get_path()), np.deg2rad(args.psi_start), 4)
+
         # TODO: need to add option to load data for genetic algorithm to simulate parking
     #############################################################################################
 
     ########################## extracting path ###############################################
     #TODO: create get_path() function for genetic agent
     final_path = np.array(agent.get_path())
+
     #############################################################################################
 
     ################################## execute ##################################################
     print('driving to destination ...')
     for i,point in enumerate(final_path):
+        if alg == Q_LEARNING:
             acc, delta = controller.optimize(my_car, final_path[i:i+MPC_HORIZON])
             # acc, delta = accelerates[i], deltas[i]
             my_car.update_state(my_car.move(acc,  delta))
             res = env.render(my_car.x, my_car.y, my_car.psi, delta)
-            logger.log(point, my_car, acc, delta)
-            cv2.imshow('environment', res)
-            key = cv2.waitKey(1)
-            if key == ord('s'):
-                cv2.imwrite('res.png', res*255)
+        else:
+            res = env.render(paths_x[i], paths_y[i], paths_psi[i], deltas [i])
+            acc, delta = gen_acc[i], deltas[i]
+            my_car.update_state_pure(my_car.move(gen_acc[i], deltas[i]))
+        logger.log(point, my_car, acc, delta)
+        cv2.imshow('environment', res)
+        key = cv2.waitKey(1)
+        if key == ord('s'):
+            cv2.imwrite('res.png', res*255)
 
     # zeroing car steer
     res = env.render(my_car.x, my_car.y, my_car.psi, 0)

@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
     gen = GeneticAlg(start[0], start[1], ox, oy, grid_size, robot_radius, end[0], end[1])
     pop1 = gen.population
-    for i in range(400):
+    for i in range(1500):
         print(f"Generation number {i}")
         gen.run_genetics(i)
         my_car = Car_Dynamics(start[0], start[1], 0, np.deg2rad(args.psi_start), length=4, dt=0.2)
@@ -116,7 +116,7 @@ if __name__ == '__main__':
     my_car = Car_Dynamics(start[0], start[1], 0, np.deg2rad(args.psi_start), length=4, dt=0.2)
     price_of_paths = []
     for path in gen.population:
-        price_of_paths.append(gen.fitness(path, my_car, 100))
+        price_of_paths.append(gen.fitness(path))
         my_car = Car_Dynamics(start[0], start[1], 0, np.deg2rad(args.psi_start), length=4, dt=0.2)
     good_indexes = np.argsort(np.array(price_of_paths))
     final_paths = gen.population[good_indexes[:30]]

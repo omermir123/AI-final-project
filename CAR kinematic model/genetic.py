@@ -34,8 +34,8 @@ class GeneticAlg:
         final_path = [np.array([self.calc_xy_index(self.start_x, self.min_x),
                                 self.calc_xy_index(self.start_y, self.min_y)])]
         for direction in directions:
-            xx = final_path[-1][0] + direction[0]
-            yy = final_path[-1][1] + direction[1]
+            xx = int(final_path[-1][0] + direction[0])
+            yy = int(final_path[-1][1] + direction[1])
             if not self.verify_step(xx, yy):
                 break
             if xx == self.goal_x and yy == self.goal_y:
@@ -152,8 +152,8 @@ class GeneticAlg:
                 rand_deg = np.deg2rad(random.choice([0, 90, 270, 360]))
                 path_deg[rand_index][0] = rand_deg
             for i in range(len(path_deg)):
-                new_x = mutate_path[-1][0] + int(path_deg[i][1] * np.cos(path_deg[i][0]))
-                new_y = mutate_path[-1][1] + int(path_deg[i][1] * np.sin(path_deg[i][0]))
+                new_x = int(mutate_path[-1][0] + int(path_deg[i][1] * np.cos(path_deg[i][0])))
+                new_y = int(mutate_path[-1][1] + int(path_deg[i][1] * np.sin(path_deg[i][0])))
                 if not self.verify_step(new_x, new_y):
                     break
                 if new_x == self.goal_x and new_y == self.goal_y:
@@ -163,23 +163,31 @@ class GeneticAlg:
             paths[j] = np.array(mutate_path)
         return paths
 
-    def fitness(self, path, car, gen_num):
+    def fitness(self, path):
         controller = control.PurePersuit()
         # my_car = control.Car_Dynamics(self.start_x, self.start_y, 0, np.deg2rad(270), length=4, dt=0.2)
         acc, delta, paths_x, paths_y, paths_psi = controller.calc_path(path, np.deg2rad(270), 4)
-        self.goal_x, self.goal_y = 75, 32
         car_location = np.array([paths_x[-1], paths_y[-1]])
         norm = np.linalg.norm(car_location - np.array([self.goal_x, self.goal_y]))
-        path_counter = np.unique(self.flatten_path(path), return_counts=True)[1]
-        n_counter = np.count_nonzero(path_counter > 1)
+        # path_counter = np.unique(self.flatten_path(path), return_counts=True)[1]
+        # n_counter = np.count_nonzero(path_counter > 1)
         if len(paths_psi) == 0:
             delta_degree = 100
         else:
             park_deg = np.rad2deg(paths_psi[-1]) % 360
             delta_degree = min(abs(park_deg - 90), abs(park_deg - 270))
-        # return 10*norm + n_counter + 2*(20 - num_of_appearances) + delta_degree * 5
+        # return 10*norm + n_counter + delta_degree * 5
         # return 20*norm + 3*n_counter + 2*(20 - num_of_appearances)
-        return norm*10 + delta_degree
+        return norm * 30 + 5 * delta_degree + self.num_of_collisions(paths_x, paths_y)
+
+
+    def num_of_collisions(self, cx, cy):
+        collisions = 0
+        for i in range(len(cx)):
+            if not self.verify_step(int(cx[i]), int(cy[i])):
+                collisions += 1
+        return collisions
+
 
         # og_path = path
         # path = self.flatten_path(path)
@@ -210,11 +218,18 @@ class GeneticAlg:
     #     return paths_psi[-1]
 
 
+    def get_path(self):
+        price_of_paths = []
+        for path in self.population:
+            price_of_paths.append(self.fitness(path))
+        good_indexes = np.argsort(np.array(price_of_paths))
+        return self.population[good_indexes[0]]
+
     def run_genetics(self, gen_num):
         price_of_paths = []
         for path in self.population:
             my_car = control.Car_Dynamics(self.start_x, self.start_y, 0, np.deg2rad(270), length=4, dt=0.2)
-            price_of_paths.append(self.fitness(path, my_car, gen_num))
+            price_of_paths.append(self.fitness(path))
         good_indexes = np.argsort(np.array(price_of_paths))
         children_pop = self.cross_over(self.population[good_indexes[:20]])
         self.population = np.array(self.compute_mutation(children_pop))
